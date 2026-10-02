@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>APRM Draw Settings</title><style>*{box-sizing:border-box}body{margin:0;background:#071725;color:#f5fbff;font-family:Arial}.w{max-width:950px;margin:auto;padding:35px 24px}a{color:#78dfe7}p{color:#abc0cd}.card{background:#0c263a;border:1px solid #ffffff20;border-radius:16px;padding:22px;margin:20px 0}textarea{width:100%;height:350px;background:#04111c;color:#fff;border:1px solid #ffffff30;border-radius:10px;padding:15px;font:18px/1.5 Consolas}button{border:0;border-radius:9px;padding:12px 18px;margin:12px 8px 0 0;font-weight:bold;cursor:pointer}.save{background:#f4ca63}.other{background:#17435e;color:#fff}.hist{font:17px/1.7 Consolas;max-height:220px;overflow:auto}</style></head><body><div class="w"><a href="index.html">← Back to draw screen</a><h1>APRM Lucky Draw Settings</h1><p>Operator page. Add or delete participant numbers here. One number per line is easiest.</p><div class="card"><h2>Eligible numbers</h2><textarea id="n"></textarea><p id="stat"></p><button class="save" id="save">SAVE NUMBERS</button><button class="other" id="clean">SORT / CLEAN</button><p id="note"></p></div><div class="card"><h2>Winner history</h2><div class="hist" id="hist"></div><button class="other" id="reset">RESET WINNER HISTORY</button></div></div><script>
+const DEF=`001
+002
+003
+004
+005
+006
+007
+008
+009
+010`;function parse(s){return[...new Set(s.split(/[\s,;]+/).filter(x=>/^\d{1,3}$/.test(x)).map(x=>x.padStart(3,'0')).filter(x=>x!='000'))]}function wins(){try{return JSON.parse(localStorage.aprmWinners||'[]')}catch{return[]}}function render(){let a=parse(n.value),w=wins();stat.textContent=a.length+' valid numbers · '+w.length+' winners recorded';hist.innerHTML=w.length?w.map((x,i)=>'Winner '+(i+1)+': '+x).join('<br>'):'No winners yet.'}n.value=localStorage.aprmNumbers||DEF;n.oninput=render;clean.onclick=()=>{n.value=parse(n.value).sort((a,b)=>+a-+b).join('\n');render()};save.onclick=()=>{let a=parse(n.value);if(!a.length){note.textContent='No valid numbers.';return}n.value=a.join('\n');localStorage.aprmNumbers=n.value;note.textContent='Saved '+a.length+' numbers on this browser.';render()};reset.onclick=()=>{if(confirm('Delete all winner history?')){localStorage.removeItem('aprmWinners');render()}};render()</script></body></html>
