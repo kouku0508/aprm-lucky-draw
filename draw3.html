@@ -42,29 +42,50 @@ function poolFrom(st){
  const winners=new Set((st?.winners||[]).map(Number));
  return (st?.participants||[]).map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=999&&!winners.has(n));
 }
-let radarAircraft=[];
+let radarAircraft=[], radarStart=performance.now();
+const SWEEP_MS=4000; // matches the CSS radar sweep rotation
+function normDeg(d){d%=360;return d<0?d+360:d}
+function angleAt(x,y){return normDeg(Math.atan2(y-50,x-50)*180/Math.PI+90)}
 function ensureRadarAircraft(){
  const host=document.getElementById('blips'); if(!host||radarAircraft.length)return;
- for(let i=0;i<8;i++){
+ for(let i=0;i<7;i++){
    const el=document.createElement('i'); el.className='aircraft';
    el.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5C13 2.7 12.6 2 12 2s-1 .7-1 1.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3-1 3 1v-1.5L13 19v-5.5L21 16z"/></svg>';
    host.appendChild(el);
-   const a=(i/8)*Math.PI*2+.35, r=18+(i%4)*6;
-   radarAircraft.push({el,x:50+Math.cos(a)*r,y:50+Math.sin(a)*r,vx:.018*Math.cos(a+1.15),vy:.018*Math.sin(a+1.15),heading:(a+1.15)*180/Math.PI});
+   const a=(i/7)*Math.PI*2+.42, r=20+(i%3)*7;
+   const hdg=normDeg((a*180/Math.PI)+35+(i%2?20:-15));
+   const ac={el,x:50+Math.cos(a)*r,y:50+Math.sin(a)*r,heading:hdg,lastSweep:-1};
+   radarAircraft.push(ac); paintAircraft(ac);
  }
- requestAnimationFrame(moveRadarAircraft);
+ requestAnimationFrame(trackSweep);
 }
-function moveRadarAircraft(){
+function paintAircraft(a){
+ a.el.style.left=a.x+'%';a.el.style.top=a.y+'%';
+ a.el.style.transform='translate(-50%,-50%) rotate('+a.heading+'deg)';
+}
+function stepAircraft(a){
+ const rad=(a.heading-90)*Math.PI/180;
+ a.x+=Math.cos(rad)*2.1;a.y+=Math.sin(rad)*2.1;
+ const d=Math.hypot(a.x-50,a.y-50);
+ if(d>42){
+   a.heading=normDeg(a.heading+165);
+   const rr=(a.heading-90)*Math.PI/180;
+   a.x+=Math.cos(rr)*4.2;a.y+=Math.sin(rr)*4.2;
+ }
+ paintAircraft(a);
+ a.el.animate([{opacity:.95,filter:'drop-shadow(0 0 10px #9dffd5)'},{opacity:.42,filter:'drop-shadow(0 0 5px #7df6bf)'}],{duration:500});
+}
+function trackSweep(now){
+ const cycles=(now-radarStart)/SWEEP_MS, sweep=normDeg(cycles*360), lap=Math.floor(cycles);
  for(const a of radarAircraft){
-   a.x+=a.vx; a.y+=a.vy;
-   const dx=a.x-50,dy=a.y-50,d=Math.hypot(dx,dy);
-   if(d>43){ a.vx*=-1; a.vy*=-1; a.heading=(Math.atan2(a.vy,a.vx)*180/Math.PI)+90; }
-   a.el.style.left=a.x+'%'; a.el.style.top=a.y+'%';
-   a.el.style.transform='translate(-50%,-50%) rotate('+a.heading+'deg)';
+   const target=angleAt(a.x,a.y);
+   // Update once per lap immediately after the sweep has passed this aircraft.
+   const passed=normDeg(sweep-target);
+   if(passed>=0 && passed<5 && a.lastSweep!==lap){a.lastSweep=lap;stepAircraft(a)}
  }
- requestAnimationFrame(moveRadarAircraft);
+ requestAnimationFrame(trackSweep);
 }
-function renderBlips(){ ensureRadarAircraft(); }
+function renderBlips(){ensureRadarAircraft();}
 function updateUI(){
  const p=poolFrom(state),wc=(state?.winners||[]).length;
  go.disabled=busy||!serverReady||!p.length;
