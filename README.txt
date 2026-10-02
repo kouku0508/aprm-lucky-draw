@@ -24,3 +24,5 @@ Cloud behavior:
 
 IMPORTANT SECURITY NOTE:
 PIN 0508 is a client-side convenience lock. Current Firestore rules require Firebase authentication but do not make the PIN a server-side administrator credential. Do not publish the operator URL broadly.
+
+Version 8.1: corrected Firebase Web API key transcription.
