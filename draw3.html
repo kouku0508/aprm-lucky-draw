@@ -9,6 +9,7 @@ header{height:122px;display:flex;align-items:center;justify-content:space-betwee
 .stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
 .radar{position:absolute;width:min(76vh,760px);height:min(76vh,760px);border:1px solid #4de7e72c;border-radius:50%;background:repeating-radial-gradient(circle,#4de7e716 0 1px,transparent 1px 78px);opacity:.65}
 .radar:before,.radar:after{content:"";position:absolute;background:#4de7e725}.radar:before{left:50%;top:0;bottom:0;width:1px}.radar:after{top:50%;left:0;right:0;height:1px}
+.blips{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}.blip{position:absolute;width:7px;height:7px;border-radius:50%;background:#9dffd5;box-shadow:0 0 8px #7df6bf,0 0 16px #4de7e7;opacity:.72;transform:translate(-50%,-50%)}.blip:after{content:"";position:absolute;inset:-4px;border:1px solid #7df6bf55;border-radius:50%}
 .sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 320deg,#4de7e71a 345deg,#4de7e766 360deg);animation:scan 5s linear infinite}@keyframes scan{to{transform:rotate(360deg)}}
 .content{z-index:2;text-align:center;width:100%}.eyebrow{color:var(--green);letter-spacing:.35em;font-size:14px;font-weight:700;margin-bottom:12px}
 .nums{display:flex;justify-content:center;gap:clamp(12px,2.8vw,36px)}.d{width:clamp(145px,19vw,245px);height:clamp(190px,24vw,305px);display:flex;align-items:center;justify-content:center;border:1px solid #4de7e75c;border-radius:10px;background:linear-gradient(180deg,#082b3bcf,#03141dde);font-size:clamp(110px,16vw,205px);font-weight:800;font-family:"Arial Narrow",Arial,sans-serif;color:#eaffff;text-shadow:0 0 18px #4de7e766;box-shadow:inset 0 0 25px #4de7e712,0 0 22px #0009;position:relative}
@@ -18,13 +19,13 @@ header{height:122px;display:flex;align-items:center;justify-content:space-betwee
 #syncMark{display:none;position:fixed;right:18px;bottom:12px;z-index:20;font:600 11px Arial;letter-spacing:.20em;color:rgba(180,225,232,.42);user-select:none}
 #syncWarn{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:20;font:700 11px Arial;letter-spacing:.12em;color:#ffb3a7}
 </style></head><body><div id="syncMark">APRM</div><div id="syncWarn">CLOUD SYNC NOT READY</div><div class="wrap"><header><img class="logo" src="aprm-logo.png" alt="42nd IFATCA APRM 2026 Tokyo"><div class="headtxt"><b>ASIA PACIFIC REGIONAL MEETING</b><span>GALA DINNER · LUCKY DRAW</span></div></header>
-<div class="stage" id="stage"><div class="radar"><div class="sweep"></div></div><div class="content"><div class="eyebrow">TARGET NUMBER</div><div class="nums"><div class="d" id="d0">—</div><div class="d" id="d1">—</div><div class="d" id="d2">—</div></div><div class="msg" id="msg">STANDBY</div><button id="go">START DRAW</button><div class="meta" id="meta"></div></div></div></div>
+<div class="stage" id="stage"><div class="radar"><div class="blips" id="blips"></div><div class="sweep"></div></div><div class="content"><div class="eyebrow">TARGET NUMBER</div><div class="nums"><div class="d" id="d0">—</div><div class="d" id="d1">—</div><div class="d" id="d2">—</div></div><div class="msg" id="msg">STANDBY</div><button id="go">START DRAW</button><div class="meta" id="meta"></div></div></div></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import {getFirestore,doc,onSnapshot,runTransaction} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 const firebaseConfig={
-apiKey:"AIzaSyAAWDyMUHKQXyj9Nkuc-keiAAtySm48Dpo",
+  apiKey:"AIzaSyAAWDyMUHKQXyj9Nkuc-keiAAtySm48Dpo",
   authDomain:"aprm-lucky-draw.firebaseapp.com",
   projectId:"aprm-lucky-draw",
   storageBucket:"aprm-lucky-draw.firebasestorage.app",
@@ -39,12 +40,23 @@ function poolFrom(st){
  const winners=new Set((st?.winners||[]).map(Number));
  return (st?.participants||[]).map(Number).filter(n=>Number.isInteger(n)&&n>0&&n<=999&&!winners.has(n));
 }
+function renderBlips(){
+ const host=document.getElementById('blips');if(!host)return;host.innerHTML='';
+ const pool=poolFrom(state),count=Math.min(pool.length,42);
+ for(let i=0;i<count;i++){
+   const n=pool[i],ang=((n*137.508)%360)*Math.PI/180,rad=12+((n*47)%82)/100*38;
+   const b=document.createElement('i');b.className='blip';
+   b.style.left=(50+Math.cos(ang)*rad)+'%';b.style.top=(50+Math.sin(ang)*rad)+'%';
+   b.style.opacity=String(.38+((n*29)%55)/100);host.appendChild(b);
+ }
+}
 function updateUI(){
  const p=poolFrom(state),wc=(state?.winners||[]).length;
  go.disabled=busy||!serverReady||!p.length;
  meta.textContent=(serverReady?p.length:0)+' TARGETS ACTIVE  ·  '+wc+' WINNERS';
  syncMark.style.display=serverReady?'block':'none';
  syncWarn.style.display=serverReady?'none':'block';
+ renderBlips();
 }
 function secureIndex(total){
  let a=new Uint32Array(1),L=4294967296-(4294967296%total);do{crypto.getRandomValues(a)}while(a[0]>=L);return a[0]%total;
@@ -53,9 +65,15 @@ async function reserveWinner(){
  return await runTransaction(db,async tx=>{
    const snap=await tx.get(stateRef); if(!snap.exists()) throw new Error("NO_CONFIG");
    const st=snap.data(), eligible=poolFrom(st); if(!eligible.length) throw new Error("NO_ELIGIBLE");
-   const weighted=new Set((st.weightedNumbers||[]).map(Number));
-   const mult=Math.max(1,Number(st.weightMultiplier||1));
-   let total=0,weights=eligible.map(n=>{const w=weighted.has(n)?mult:1;total+=w;return w});
+   const groups=st.weightGroups||{};
+   const weightMap=new Map();
+   for(const m of [2,3,4,5])for(const n of (groups[m]||groups[String(m)]||[]).map(Number))weightMap.set(n,m);
+   // Backward compatibility with the older single-multiplier setting.
+   if(!weightMap.size){
+     const oldSet=new Set((st.weightedNumbers||[]).map(Number)),oldMult=Math.max(1,Number(st.weightMultiplier||1));
+     for(const n of oldSet)weightMap.set(n,oldMult);
+   }
+   let total=0,weights=eligible.map(n=>{const w=weightMap.get(n)||1;total+=w;return w});
    let r=secureIndex(total),winner=eligible[eligible.length-1];
    for(let i=0;i<eligible.length;i++){if(r<weights[i]){winner=eligible[i];break}r-=weights[i]}
    const old=(st.winners||[]).map(Number);

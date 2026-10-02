@@ -21,11 +21,14 @@
  document.getElementById('pinBtn').onclick=unlock;inp.addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
 })();
 </script><div id="cloudState" style="position:fixed;right:14px;bottom:12px;z-index:1000;color:#83dfe4;font:11px Arial;letter-spacing:.12em">CLOUD CONNECTING…</div><div class="w"><header><img src="aprm-logo.png"><div><h1>Lucky Draw · Operator Settings</h1><a href="draw3.html">← 3-digit draw</a> &nbsp; | &nbsp; <a href="draw2.html">2-digit draw</a></div></header><div class="card"><h2>Eligible numbers</h2><p>One shared participant list is used by both draw modes. Default: <b>001–180</b>. The 2-digit draw uses IDs 001–099 and displays them as 01–99; the 3-digit draw uses IDs 001–180. A winner in either mode is automatically excluded from both modes. Settings are shared through Firebase Cloud Firestore. Saving here updates every draw device.</p><textarea id="n"></textarea><p id="stat"></p><button class="save" id="save">SAVE NUMBERS</button><button id="clean">SORT / CLEAN</button><button id="restore">RESTORE 001–180</button><p id="note"></p></div><div class="card"><h2>Weighted Draw Demo</h2>
-<p>Client-comparison mode. Numbers entered here receive the selected weight. Example: with ×2, each listed number has twice the selection weight of each normal eligible number. This setting is shared by the 2-digit and 3-digit draw screens.</p>
-<label>Weighted numbers</label>
-<textarea id="weighted" style="height:130px" placeholder="Example: 047 052 088"></textarea>
-<p><label>Weight: <select id="weight"><option value="1">×1 (normal)</option><option value="2">×2</option><option value="3">×3</option><option value="5">×5</option></select></label></p>
-<button class="save" id="saveWeight">SAVE WEIGHT SETTING</button><button id="clearWeight">CLEAR WEIGHTING</button>
+<p>Client-comparison mode. Put numbers into the multiplier group you want. A number listed in ×2 has twice the normal selection weight; ×3, ×4 and ×5 work the same way. The same number cannot be saved in more than one group. These settings are shared by both draw modes.</p>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+ <div><label><b>×2 numbers</b></label><textarea id="weighted2" style="height:120px" placeholder="Example: 047 052"></textarea></div>
+ <div><label><b>×3 numbers</b></label><textarea id="weighted3" style="height:120px" placeholder="Example: 088"></textarea></div>
+ <div><label><b>×4 numbers</b></label><textarea id="weighted4" style="height:120px" placeholder="Example: 101"></textarea></div>
+ <div><label><b>×5 numbers</b></label><textarea id="weighted5" style="height:120px" placeholder="Example: 125"></textarea></div>
+</div>
+<button class="save" id="saveWeight">SAVE WEIGHT SETTINGS</button><button id="clearWeight">CLEAR ALL WEIGHTING</button>
 <p id="weightNote"></p></div><div class="card"><h2>Winner history</h2><div class="hist" id="hist"></div><button id="reset">RESET WINNER HISTORY</button></div></div><script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -59,13 +62,18 @@ save.onclick=async()=>{
  dirty=false;note.textContent='Saved to cloud: '+participants.length+' numbers · '+version.slice(0,8);n.value=fmt(participants);
 };
 saveWeight.onclick=async()=>{
- const weightedNumbers=parse(weighted.value),weightMultiplier=Math.max(1,Number(weight.value)||1),version=crypto.randomUUID();
- await setDoc(ref,{weightedNumbers,weightMultiplier,configVersion:version,updatedAt:serverTimestamp()},{merge:true});
- weightNote.textContent='Saved to cloud: '+weightedNumbers.length+' weighted number(s) at ×'+weightMultiplier+' · '+version.slice(0,8);
+ const groups={2:parse(weighted2.value),3:parse(weighted3.value),4:parse(weighted4.value),5:parse(weighted5.value)};
+ const seen=new Map(),dupes=[];
+ for(const [m,arr] of Object.entries(groups))for(const n of arr){if(seen.has(n))dupes.push(n);else seen.set(n,m)}
+ if(dupes.length){weightNote.textContent='Duplicate number(s) across groups: '+[...new Set(dupes)].map(n=>String(n).padStart(3,'0')).join(', ');return}
+ const version=crypto.randomUUID();
+ await setDoc(ref,{weightGroups:groups,weightedNumbers:[],weightMultiplier:1,configVersion:version,updatedAt:serverTimestamp()},{merge:true});
+ weightNote.textContent='Saved to cloud · ×2:'+groups[2].length+'  ×3:'+groups[3].length+'  ×4:'+groups[4].length+'  ×5:'+groups[5].length+' · '+version.slice(0,8);
 };
 clearWeight.onclick=async()=>{
- const version=crypto.randomUUID();await setDoc(ref,{weightedNumbers:[],weightMultiplier:1,configVersion:version,updatedAt:serverTimestamp()},{merge:true});
- weightNote.textContent='Weighting cleared in cloud.';
+ const version=crypto.randomUUID();
+ await setDoc(ref,{weightGroups:{2:[],3:[],4:[],5:[]},weightedNumbers:[],weightMultiplier:1,configVersion:version,updatedAt:serverTimestamp()},{merge:true});
+ weightNote.textContent='All weighting cleared in cloud.';
 };
 reset.onclick=async()=>{
  if(confirm('Delete ALL winner history on every device?'))await updateDoc(ref,{winners:[],lastWinner:null,lastDrawMode:null,updatedAt:serverTimestamp()});
@@ -75,14 +83,17 @@ try{
  onSnapshot(ref,{includeMetadataChanges:true},async snap=>{
    if(!snap.exists()){
      const version=crypto.randomUUID();
-     await setDoc(ref,{participants:parse(DEFAULT),winners:[],weightedNumbers:[],weightMultiplier:1,configVersion:version,updatedAt:serverTimestamp()});
+     await setDoc(ref,{participants:parse(DEFAULT),winners:[],weightGroups:{2:[],3:[],4:[],5:[]},weightedNumbers:[],weightMultiplier:1,configVersion:version,updatedAt:serverTimestamp()});
      return;
    }
    if(snap.metadata.fromCache)return;
    cloudState=snap.data();loaded=true;
    if(!dirty)n.value=fmt(cloudState.participants||parse(DEFAULT));
-   weighted.value=fmt(cloudState.weightedNumbers||[]);
-   weight.value=String(cloudState.weightMultiplier||1);
+   const g=cloudState.weightGroups||{};
+   weighted2.value=fmt(g[2]||g["2"]||[]);
+   weighted3.value=fmt(g[3]||g["3"]||[]);
+   weighted4.value=fmt(g[4]||g["4"]||[]);
+   weighted5.value=fmt(g[5]||g["5"]||[]);
    render();
    document.getElementById('cloudState').textContent='CLOUD CONNECTED · CONFIG '+String(cloudState.configVersion||'--------').slice(0,8);
  });
