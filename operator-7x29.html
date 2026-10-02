@@ -20,197 +20,71 @@
  }
  document.getElementById('pinBtn').onclick=unlock;inp.addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
 })();
-</script><div class="w"><header><img src="aprm-logo.png"><div><h1>Lucky Draw · Operator Settings</h1><a href="draw3.html">← 3-digit draw</a> &nbsp; | &nbsp; <a href="draw2.html">2-digit draw</a></div></header><div class="card"><h2>Eligible numbers</h2><p>One shared participant list is used by both draw modes. Default: <b>001–180</b>. The 2-digit draw uses IDs 001–099 and displays them as 01–99; the 3-digit draw uses IDs 001–180. A winner in either mode is automatically excluded from both modes. Settings are stored only in this browser.</p><textarea id="n"></textarea><p id="stat"></p><button class="save" id="save">SAVE NUMBERS</button><button id="clean">SORT / CLEAN</button><button id="restore">RESTORE 001–180</button><p id="note"></p></div><div class="card"><h2>Weighted Draw Demo</h2>
+</script><div id="cloudState" style="position:fixed;right:14px;bottom:12px;z-index:1000;color:#83dfe4;font:11px Arial;letter-spacing:.12em">CLOUD CONNECTING…</div><div class="w"><header><img src="aprm-logo.png"><div><h1>Lucky Draw · Operator Settings</h1><a href="draw3.html">← 3-digit draw</a> &nbsp; | &nbsp; <a href="draw2.html">2-digit draw</a></div></header><div class="card"><h2>Eligible numbers</h2><p>One shared participant list is used by both draw modes. Default: <b>001–180</b>. The 2-digit draw uses IDs 001–099 and displays them as 01–99; the 3-digit draw uses IDs 001–180. A winner in either mode is automatically excluded from both modes. Settings are shared through Firebase Cloud Firestore. Saving here updates every draw device.</p><textarea id="n"></textarea><p id="stat"></p><button class="save" id="save">SAVE NUMBERS</button><button id="clean">SORT / CLEAN</button><button id="restore">RESTORE 001–180</button><p id="note"></p></div><div class="card"><h2>Weighted Draw Demo</h2>
 <p>Client-comparison mode. Numbers entered here receive the selected weight. Example: with ×2, each listed number has twice the selection weight of each normal eligible number. This setting is shared by the 2-digit and 3-digit draw screens.</p>
 <label>Weighted numbers</label>
 <textarea id="weighted" style="height:130px" placeholder="Example: 047 052 088"></textarea>
 <p><label>Weight: <select id="weight"><option value="1">×1 (normal)</option><option value="2">×2</option><option value="3">×3</option><option value="5">×5</option></select></label></p>
 <button class="save" id="saveWeight">SAVE WEIGHT SETTING</button><button id="clearWeight">CLEAR WEIGHTING</button>
-<p id="weightNote"></p></div><div class="card"><h2>Winner history</h2><div class="hist" id="hist"></div><button id="reset">RESET WINNER HISTORY</button></div></div><script>
-const DEFAULT=`001
-002
-003
-004
-005
-006
-007
-008
-009
-010
-011
-012
-013
-014
-015
-016
-017
-018
-019
-020
-021
-022
-023
-024
-025
-026
-027
-028
-029
-030
-031
-032
-033
-034
-035
-036
-037
-038
-039
-040
-041
-042
-043
-044
-045
-046
-047
-048
-049
-050
-051
-052
-053
-054
-055
-056
-057
-058
-059
-060
-061
-062
-063
-064
-065
-066
-067
-068
-069
-070
-071
-072
-073
-074
-075
-076
-077
-078
-079
-080
-081
-082
-083
-084
-085
-086
-087
-088
-089
-090
-091
-092
-093
-094
-095
-096
-097
-098
-099
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137
-138
-139
-140
-141
-142
-143
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
-154
-155
-156
-157
-158
-159
-160
-161
-162
-163
-164
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174
-175
-176
-177
-178
-179
-180`;function parse(s){return[...new Set(s.split(/[\s,;]+/).filter(x=>/^\d{1,3}$/.test(x)).map(x=>x.padStart(3,'0')).filter(x=>x!=='000'))]}function wins(){try{return JSON.parse(localStorage.aprmWinners||'[]')}catch{return[]}}function render(){let a=parse(n.value),w=wins();stat.textContent=a.length+' eligible numbers · '+w.length+' winners recorded';hist.innerHTML=w.length?w.map((x,i)=>'Winner '+(i+1)+': '+x).join('<br>'):'No winners yet.'}n.value=localStorage.aprmNumbers||DEFAULT;n.oninput=render;clean.onclick=()=>{n.value=parse(n.value).sort((a,b)=>+a-+b).join('\n');render()};save.onclick=()=>{let a=parse(n.value);if(!a.length){note.textContent='No valid numbers.';return}n.value=a.join('\n');localStorage.aprmNumbers=n.value;note.textContent='Saved '+a.length+' numbers on this browser.';render()};restore.onclick=()=>{if(confirm('Restore the default 001–180 list?')){n.value=DEFAULT;localStorage.aprmNumbers=DEFAULT;note.textContent='Restored 001–180.';render()}};reset.onclick=()=>{if(confirm('Delete all winner history?')){localStorage.removeItem('aprmWinners');render()}};
-function weightedParse(v){return [...new Set((v||'').split(/[\s,;]+/).filter(x=>/^\d{1,3}$/.test(x)).map(x=>String(parseInt(x,10))).filter(x=>x!=='0'))]}
-weighted.value=(localStorage.aprmWeightedNumbers||'').split(',').map(x=>String(parseInt(x,10)).padStart(3,'0')).join('\n');
-weight.value=localStorage.aprmWeightMultiplier||'1';
-saveWeight.onclick=()=>{let a=weightedParse(weighted.value),m=Number(weight.value)||1;localStorage.aprmWeightedNumbers=a.join(',');localStorage.aprmWeightMultiplier=String(m);weighted.value=a.map(x=>x.padStart(3,'0')).join('\n');weightNote.textContent='Saved: '+a.length+' weighted number(s) at ×'+m+'.';};
-clearWeight.onclick=()=>{localStorage.removeItem('aprmWeightedNumbers');localStorage.aprmWeightMultiplier='1';weighted.value='';weight.value='1';weightNote.textContent='Weighting cleared. All eligible numbers are equal.';};
-render();
+<p id="weightNote"></p></div><div class="card"><h2>Winner history</h2><div class="hist" id="hist"></div><button id="reset">RESET WINNER HISTORY</button></div></div><script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import {getFirestore,doc,onSnapshot,setDoc,updateDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+const firebaseConfig={
+  apiKey:"AIzaSyAAWDvMUHKOXvi9Nkuc-keiAAtvSm48Dpo",
+  authDomain:"aprm-lucky-draw.firebaseapp.com",
+  projectId:"aprm-lucky-draw",
+  storageBucket:"aprm-lucky-draw.firebasestorage.app",
+  messagingSenderId:"91279305822",
+  appId:"1:91279305822:web:a3d77faa3f2c87f077d8cf"
+};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),ref=doc(db,"aprm","state");
+const DEFAULT=Array.from({length:180},(_,i)=>String(i+1).padStart(3,'0')).join('\n');
+let cloudState=null,dirty=false,loaded=false;
+const parse=v=>[...new Set((v||'').split(/[\s,;]+/).filter(x=>/^\d{1,3}$/.test(x)).map(Number).filter(x=>x>0&&x<=999))].sort((a,b)=>a-b);
+const fmt=a=>a.map(x=>String(x).padStart(3,'0')).join('\n');
+function render(){
+ const a=parse(n.value),w=(cloudState?.winners||[]).map(Number);
+ stat.textContent=a.length+' eligible numbers · '+w.length+' winners recorded';
+ hist.innerHTML=w.length?w.map((x,i)=>'Winner '+(i+1)+': '+String(x).padStart(3,'0')).join('<br>'):'No winners yet.';
+}
+function pending(){dirty=true;note.textContent='Unsaved changes — press SAVE NUMBERS.'}
+n.oninput=()=>{pending();render()};
+clean.onclick=()=>{n.value=fmt(parse(n.value));pending();render()};
+restore.onclick=()=>{if(confirm('Restore the default 001–180 list?')){n.value=DEFAULT;pending();render()}};
+save.onclick=async()=>{
+ const participants=parse(n.value);if(!participants.length){note.textContent='No valid numbers.';return}
+ const version=crypto.randomUUID();
+ await setDoc(ref,{participants,configVersion:version,updatedAt:serverTimestamp()},{merge:true});
+ dirty=false;note.textContent='Saved to cloud: '+participants.length+' numbers · '+version.slice(0,8);n.value=fmt(participants);
+};
+saveWeight.onclick=async()=>{
+ const weightedNumbers=parse(weighted.value),weightMultiplier=Math.max(1,Number(weight.value)||1),version=crypto.randomUUID();
+ await setDoc(ref,{weightedNumbers,weightMultiplier,configVersion:version,updatedAt:serverTimestamp()},{merge:true});
+ weightNote.textContent='Saved to cloud: '+weightedNumbers.length+' weighted number(s) at ×'+weightMultiplier+' · '+version.slice(0,8);
+};
+clearWeight.onclick=async()=>{
+ const version=crypto.randomUUID();await setDoc(ref,{weightedNumbers:[],weightMultiplier:1,configVersion:version,updatedAt:serverTimestamp()},{merge:true});
+ weightNote.textContent='Weighting cleared in cloud.';
+};
+reset.onclick=async()=>{
+ if(confirm('Delete ALL winner history on every device?'))await updateDoc(ref,{winners:[],lastWinner:null,lastDrawMode:null,updatedAt:serverTimestamp()});
+};
+try{
+ await signInAnonymously(auth);
+ onSnapshot(ref,{includeMetadataChanges:true},async snap=>{
+   if(!snap.exists()){
+     const version=crypto.randomUUID();
+     await setDoc(ref,{participants:parse(DEFAULT),winners:[],weightedNumbers:[],weightMultiplier:1,configVersion:version,updatedAt:serverTimestamp()});
+     return;
+   }
+   if(snap.metadata.fromCache)return;
+   cloudState=snap.data();loaded=true;
+   if(!dirty)n.value=fmt(cloudState.participants||parse(DEFAULT));
+   weighted.value=fmt(cloudState.weightedNumbers||[]);
+   weight.value=String(cloudState.weightMultiplier||1);
+   render();
+   document.getElementById('cloudState').textContent='CLOUD CONNECTED · CONFIG '+String(cloudState.configVersion||'--------').slice(0,8);
+ });
+}catch(e){document.getElementById('cloudState').textContent='CLOUD ERROR';console.error(e)}
 </script></body></html>
