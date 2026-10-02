@@ -86,5 +86,10 @@ try{
    render();
    document.getElementById('cloudState').textContent='CLOUD CONNECTED · CONFIG '+String(cloudState.configVersion||'--------').slice(0,8);
  });
-}catch(e){document.getElementById('cloudState').textContent='CLOUD ERROR';console.error(e)}
+}catch(e){
+ const el=document.getElementById('cloudState');
+ el.textContent='CLOUD ERROR · '+(e.code||'NO_CODE')+' · '+(e.message||String(e));
+ el.style.maxWidth='95vw';el.style.whiteSpace='normal';el.style.background='#220b0b';el.style.padding='8px';
+ console.error(e);
+}
 </script></body></html>

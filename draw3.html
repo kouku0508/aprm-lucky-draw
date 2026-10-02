@@ -87,7 +87,12 @@ try{
  onSnapshot(stateRef,{includeMetadataChanges:true},snap=>{
    if(!snap.exists()||snap.metadata.fromCache||!snap.data().configVersion){serverReady=false;updateUI();return}
    state=snap.data();currentVersion=state.configVersion;serverReady=true;updateUI();
- },()=>{serverReady=false;updateUI()});
-}catch(e){serverReady=false;updateUI()}
+ },e=>{serverReady=false;updateUI();const w=document.getElementById('syncWarn');if(w){w.style.display='block';w.textContent='FIRESTORE ERROR · '+(e.code||'NO_CODE')+' · '+(e.message||String(e));w.style.maxWidth='92vw';w.style.whiteSpace='normal';}console.error(e)});
+}catch(e){
+ serverReady=false;updateUI();
+ const w=document.getElementById('syncWarn');
+ if(w){w.style.display='block';w.textContent='CLOUD ERROR · '+(e.code||'NO_CODE')+' · '+(e.message||String(e));w.style.maxWidth='92vw';w.style.whiteSpace='normal';}
+ console.error(e);
+}
 updateUI();
 </script></body></html>
